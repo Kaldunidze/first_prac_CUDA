@@ -7,7 +7,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type (Debug/Release)" FORCE)
 endif()
 
-set(L 128 CACHE STRING "Size of the arrays")
+set(L 256 CACHE STRING "Size of the arrays")
 
 # --- 2. CUDA Architectures Fix ---
 # Explicitly set architectures to avoid "must be non-empty" error.
