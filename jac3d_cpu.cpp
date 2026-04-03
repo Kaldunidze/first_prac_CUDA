@@ -1,66 +1,95 @@
 /* Jacobi-3 program */
 
-#include <math.h>
-#include <stdio.h>
+#include <cmath>
+#include <iostream>
+#include <iomanip>
+#include <ctime>
+#include <string>
+#include <fstream>
 
 #define Max(a, b) ((a) > (b) ? (a) : (b))
 
-#define L 384
-#define ITMAX 100
+#define ITMAX 1000
 
 int i, j, k, it;
 double eps;
 double MAXEPS = 0.5f;
 
+inline int IDX(int i, int j, int k, int L)
+{
+    return i * L * L + j * L + k;
+}
+
 int main(int an, char **as)
 {
-    //TODO: use malloc/new
-    double A[L][L][L], B[L][L][L];
-    double startt, endt;
-    
+
+    if (an != 2)
+    {
+        std::cout << "Usage: " << as[0] << " L" << std::endl;
+    }
+
+    int L = std::stoi(as[1]);
+
+    auto A = new double[L * L * L];
+    auto B = new double[L * L * L];
+
+    clock_t startt = clock();
+
     for (i = 0; i < L; i++)
         for (j = 0; j < L; j++)
             for (k = 0; k < L; k++)
             {
-                A[i][j][k] = 0;
+                A[IDX(i, j, k, L)] = 0;
                 if (i == 0 || j == 0 || k == 0 || i == L - 1 || j == L - 1 || k == L - 1)
-                    B[i][j][k] = 0;
+                    B[IDX(i, j, k, L)] = 0;
                 else
-                    B[i][j][k] = 4 + i + j + k;
-            }    
+                    B[IDX(i, j, k, L)] = 4 + i + j + k;
+            }
 
     /* iteration loop */
     for (it = 1; it <= ITMAX; it++)
     {
         eps = 0;
-        
+
         for (i = 1; i < L - 1; i++)
             for (j = 1; j < L - 1; j++)
                 for (k = 1; k < L - 1; k++)
                 {
-                    double tmp = fabs(B[i][j][k] - A[i][j][k]);
+                    double tmp = fabs(B[IDX(i, j, k, L)] - A[IDX(i, j, k, L)]);
                     eps = Max(tmp, eps);
-                    A[i][j][k] = B[i][j][k];
+                    A[IDX(i, j, k, L)] = B[IDX(i, j, k, L)];
                 }
 
         for (i = 1; i < L - 1; i++)
             for (j = 1; j < L - 1; j++)
                 for (k = 1; k < L - 1; k++)
-                    B[i][j][k] = (A[i - 1][j][k] + A[i][j - 1][k] + A[i][j][k - 1] + A[i][j][k + 1] + A[i][j + 1][k] + A[i + 1][j][k]) / 6.0f;
-        
-        printf(" IT = %4i   EPS = %14.7E\n", it, eps);
+                    B[IDX(i, j, k, L)] = (A[IDX(i - 1, j, k, L)] + A[IDX(i, j - 1, k, L)] + A[IDX(i, j, k - 1, L)] + A[IDX(i, j, k + 1, L)] + A[IDX(i, j + 1, k, L)] + A[IDX(i + 1, j, k, L)]) / 6.0f;
+
+        std::cout << " IT = " << std::setw(4) << it << "   EPS = " << std::scientific << std::setprecision(7) << eps << '\n';
+
         if (eps < MAXEPS)
             break;
     }
 
-    printf(" Jacobi3D Benchmark Completed.\n");
-    printf(" Size            = %4d x %4d x %4d\n", L, L, L);
-    printf(" Iterations      =       %12d\n", ITMAX);
-    //TODO
-    //printf(" Time in seconds =       %12.2lf\n", endt - startt);
-    printf(" Operation type  =     floating point\n");
-    //printf(" Verification    =       %12s\n", (fabs(eps - 5.058044) < 1e-11 ? "SUCCESSFUL" : "UNSUCCESSFUL"));
+    clock_t endt = clock();
+    double duration_sec = (double)(endt - startt) / CLOCKS_PER_SEC;
 
-    printf(" END OF Jacobi3D Benchmark\n");
+    std::cout << " Jacobi3D Benchmark Completed." << '\n';
+    std::cout << " Size            = " << std::setw(4) << L << " x " << std::setw(4) << L << " x " << std::setw(4) << L << '\n';
+    std::cout << " Iterations      =       " << std::setw(12) << ITMAX << '\n';
+    std::cout << " Time in seconds =       " << std::setw(12) << std::fixed << std::setprecision(2) << duration_sec << '\n';
+    std::cout << " Operation type  =     floating point" << '\n';
+
+    std::cout << " END OF Jacobi3D Benchmark" << std::endl;
+
+    auto filename = std::string(as[0]) + "_out";
+    std::ofstream out(filename, std::ios::binary);
+
+    out.write(reinterpret_cast<const char *>(A), L*L*L*sizeof(double));
+    out.close();
+
+    delete[] A;
+    delete[] B;
+
     return 0;
 }

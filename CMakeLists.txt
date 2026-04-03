@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
 project(Jacobi3D_Project LANGUAGES CXX CUDA)
 
-# --- 1. Build type and default L ---
+# --- 1. Configuration & Arguments ---
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type (Debug/Release)" FORCE)
@@ -9,92 +9,65 @@ endif()
 
 set(L 128 CACHE STRING "Size of the arrays")
 
-# --- 2. CUDA architectures (MUST be non-empty) ---
-
-# Set this BEFORE defining CUDA targets.
-# Example: compile for common modern architectures (60, 70, 80).
-# You can adjust this list to your needs.
+# --- 2. CUDA Architectures Fix ---
+# Explicitly set architectures to avoid "must be non-empty" error.
 set(CMAKE_CUDA_ARCHITECTURES "60;70;80" CACHE STRING "CUDA architectures" FORCE)
 
-# --- 3. Executables ---
+# --- 3. Executable Definitions ---
 
-# CPU version (OpenMP)
+# CPU Version
 add_executable(jac3d_cpu jac3d_cpu.cpp)
 find_package(OpenMP REQUIRED)
 target_link_libraries(jac3d_cpu PRIVATE OpenMP::OpenMP_CXX)
-set_target_properties(jac3d_cpu PROPERTIES
-    CXX_STANDARD 14
-    CXX_STANDARD_REQUIRED ON
-)
+target_compile_options(jac3d_cpu PRIVATE $<$<CONFIG:Release>:-O3> $<$<CONFIG:Debug>:-g -O0>)
 
-# GPU version (CUDA)
+# GPU Version
 add_executable(jac3d_gpu jac3d_gpu.cu)
-set_target_properties(jac3d_gpu PROPERTIES
-    CUDA_STANDARD 14
-    CUDA_STANDARD_REQUIRED ON
-    # No need to set CUDA_ARCHITECTURES here; it is initialized from CMAKE_CUDA_ARCHITECTURES.
+target_compile_options(jac3d_gpu PRIVATE 
+    $<$<CONFIG:Release>:-O3> 
+    $<$<CONFIG:Debug>:-g -G -O0>
 )
 
-# --- 4. Compilation flags (Debug vs Release) ---
+# Comparison Program
+add_executable(compare compare.cpp)
+target_compile_options(compare PRIVATE $<$<CONFIG:Release>:-O3> $<$<CONFIG:Debug>:-g>)
 
-function(set_build_flags target)
-    # Release flags
-    target_compile_options(${target} PRIVATE
-        $<$<CONFIG:Release>:-O3>
-    )
 
-    # Debug flags
-    target_compile_options(${target} PRIVATE
-        $<$<CONFIG:Debug>:-g -O0>
-    )
+# --- 4. Custom Targets ---
 
-    # CUDA-specific debug flag (-G for device debug info)
-    if(${target} STREQUAL "jac3d_gpu")
-        target_compile_options(${target} PRIVATE
-            $<$<CONFIG:Debug>:-G>
-        )
-    endif()
-endfunction()
+# Determine output filenames based on executable names
+set(CPU_OUT_FILE "${CMAKE_BINARY_DIR}/jac3d_cpu_out")
+set(GPU_OUT_FILE "${CMAKE_BINARY_DIR}/jac3d_gpu_out")
 
-set_build_flags(jac3d_cpu)
-set_build_flags(jac3d_gpu)
-
-# --- 5. Custom targets: run_cpu, run_gpu, run_compare ---
-
+# Target: run_cpu
+# Runs the CPU version. The program itself creates "jac3d_cpu_out" in the working dir.
 add_custom_target(run_cpu
     COMMAND jac3d_cpu ${L}
     DEPENDS jac3d_cpu
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running CPU version with L=${L}"
+    COMMENT "Running CPU version (L=${L}) -> generating ${CPU_OUT_FILE}"
     VERBATIM
 )
 
+# Target: run_gpu
+# Runs the GPU version. The program itself creates "jac3d_gpu_out".
 add_custom_target(run_gpu
     COMMAND jac3d_gpu ${L}
     DEPENDS jac3d_gpu
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running GPU version with L=${L}"
+    COMMENT "Running GPU version (L=${L}) -> generating ${GPU_OUT_FILE}"
     VERBATIM
 )
 
-# "Third program": compare results using a generated CMake script
-set(COMPARE_SCRIPT "${CMAKE_BINARY_DIR}/compare_results.cmake")
-file(WRITE ${COMPARE_SCRIPT}
-"message(STATUS \"Running Comparison (L=${L})...\")
-execute_process(COMMAND ${CMAKE_BINARY_DIR}/jac3d_cpu ${L} OUTPUT_FILE cpu_out.txt)
-execute_process(COMMAND ${CMAKE_BINARY_DIR}/jac3d_gpu ${L} OUTPUT_FILE gpu_out.txt)
-execute_process(COMMAND ${CMAKE_COMMAND} -E compare_files cpu_out.txt gpu_out.txt RESULT_VARIABLE DIFF_RESULT)
-if(DIFF_RESULT EQUAL 0)
-    message(STATUS \"SUCCESS: Results are identical.\")
-else()
-    message(FATAL_ERROR \"FAILURE: Results differ.\")
-endif()
-")
-
+# Target: run_compare
+# Runs both previous targets to generate files, then runs the compare tool.
 add_custom_target(run_compare
-    COMMAND ${CMAKE_COMMAND} -P ${COMPARE_SCRIPT}
-    DEPENDS jac3d_cpu jac3d_gpu
+    COMMAND compare ${L} ${CPU_OUT_FILE} ${GPU_OUT_FILE}
+    DEPENDS compare
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running both versions and comparing results"
+    COMMENT "Comparing binary outputs"
     VERBATIM
 )
+
+# Force run_compare to update the files by running the programs first
+add_dependencies(run_compare run_cpu run_gpu)
