@@ -15,9 +15,9 @@ int i, j, k, it;
 double eps;
 double MAXEPS = 0.5f;
 
-inline int IDX(int i, int j, int k, int L)
+inline int IDX(int _i, int _j, int _k, int _L)
 {
-    return i * L * L + j * L + k;
+    return _i * _L * _L + _j * _L + _k;
 }
 
 int main(int an, char **as)

@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     std::vector<double> gpu_data(total_size);
 
     // Helper lambda to read binary file
-    auto readBinary = [](const char* filename, std::vector<double>& buffer, size_t expected_bytes) {
+    auto readBinary = [](const char* filename, std::vector<double>& buffer,  std::streamsize expected_bytes) {
         std::ifstream in(filename, std::ios::binary | std::ios::ate);
         if (!in.is_open()) {
             std::cerr << "Error: Cannot open file " << filename << std::endl;
