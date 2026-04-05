@@ -5,6 +5,10 @@
 #include <cstdlib>
 #include <iomanip>
 
+// хотелось сделать побыстрее
+// приведенный ниже код создан генеративным ИИ, основная программа - нет
+
+
 int main(int argc, char* argv[]) {
     if (argc != 4) {
         std::cerr << "Usage: " << argv[0] << " <L> <cpu_output_file> <gpu_output_file>" << std::endl;
