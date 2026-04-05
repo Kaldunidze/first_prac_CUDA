@@ -9,8 +9,6 @@
 
 #define Max(a, b) ((a) > (b) ? (a) : (b))
 
-#define ITMAX 1000
-
 int i, j, k, it;
 double eps;
 double MAXEPS = 0.5f;
@@ -23,12 +21,19 @@ inline int IDX(int _i, int _j, int _k, int _L)
 int main(int an, char **as)
 {
 
-    if (an != 2)
+    if (an < 2 || an > 3)
     {
-        std::cout << "Usage: " << as[0] << " L" << std::endl;
+        std::cout << "Usage: " << as[0] << " L [max_iterations]" << std::endl;
+        return 1;
     }
 
     int L = std::stoi(as[1]);
+    int ITMAX = 20;
+
+    if (an == 3)
+    {
+        ITMAX = std::stoi(as[2]);
+    }
 
     auto A = new double[L * L * L];
     auto B = new double[L * L * L];
@@ -85,7 +90,7 @@ int main(int an, char **as)
     auto filename = std::string(as[0]) + "_out";
     std::ofstream out(filename, std::ios::binary);
 
-    out.write(reinterpret_cast<const char *>(A), L*L*L*sizeof(double));
+    out.write(reinterpret_cast<const char *>(A), L * L * L * sizeof(double));
     out.close();
 
     delete[] A;

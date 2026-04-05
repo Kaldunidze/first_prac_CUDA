@@ -8,8 +8,6 @@
 #include <string>
 #include <fstream>
 
-#define ITMAX 1000
-
 __host__ __device__ inline int IDX(int i, int j, int k, int L)
 {
     return i * L * L + j * L + k;
@@ -65,12 +63,19 @@ __global__ void updateKernel(double *A, double *B, int L)
 int main(int an, char **as)
 {
 
-    if (an != 2)
+    if (an < 2 || an > 3)
     {
-        std::cout << "Usage: " << as[0] << " L" << std::endl;
+        std::cout << "Usage: " << as[0] << " L [max_iterations]" << std::endl;
+        return 1;
     }
 
     int L = std::stoi(as[1]);
+    int ITMAX = 20;
+
+    if (an == 3)
+    {
+        ITMAX = std::stoi(as[2]);
+    }
 
     size_t size = L * L * L * sizeof(double);
     double *d_A, *d_B, *d_diff;
@@ -114,12 +119,12 @@ int main(int an, char **as)
     std::cout << " Operation type  =     floating point" << '\n';
     std::cout << " END OF Jacobi3D Benchmark" << std::endl;
 
-    auto A = new double[size];
-    cudaMemcpy(A, d_A,size,  cudaMemcpyDeviceToHost);
+    auto A = new double[L*L*L];
+    cudaMemcpy(A, d_A, size, cudaMemcpyDeviceToHost);
 
     auto filename = std::string(as[0]) + "_out";
     std::ofstream out(filename, std::ios::binary);
-    
+
     out.write(reinterpret_cast<const char *>(A), size);
     out.close();
 
