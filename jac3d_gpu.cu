@@ -77,7 +77,6 @@ int main(int an, char **as)
 
     cudaMalloc(&d_A, size);
     cudaMalloc(&d_B, size);
-    cudaMalloc(&d_diff, size);
 
     dim3 blockSize(8, 8, 8);
     dim3 gridSize((L + 7) / 8, (L + 7) / 8, (L + 7) / 8);
@@ -130,7 +129,5 @@ int main(int an, char **as)
 
     cudaFree(d_A);
     cudaFree(d_B);
-    cudaFree(d_diff);
-
     return 0;
 }
