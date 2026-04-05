@@ -30,21 +30,6 @@ __global__ void initKernel(double *A, double *B, int L)
         B[idx] = 4 + i + j + k;
 }
 
-__global__ void copyDiffKernel(double *A, double *B, double *diff, int L)
-{
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int j = blockIdx.y * blockDim.y + threadIdx.y;
-    int k = blockIdx.z * blockDim.z + threadIdx.z;
-
-    if (i >= L || j >= L || k >= L)
-        return;
-
-    int idx = IDX(i, j, k, L);
-    double tmp = fabs(B[idx] - A[idx]);
-    diff[idx] = tmp;
-    A[idx] = B[idx];
-}
-
 __global__ void updateKernel(double *A, double *B, int L)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -54,11 +39,21 @@ __global__ void updateKernel(double *A, double *B, int L)
     if (i <= 0 || j <= 0 || k <= 0 || i >= L - 1 || j >= L - 1 || k >= L - 1)
         return;
 
-    int idx = IDX(i, j, k, L);
-    B[idx] = (A[IDX(i - 1, j, k, L)] + A[IDX(i, j - 1, k, L)] + A[IDX(i, j, k - 1, L)] +
-              A[IDX(i, j, k + 1, L)] + A[IDX(i, j + 1, k, L)] + A[IDX(i + 1, j, k, L)]) /
-             6.0;
+    B[IDX(i, j, k, L)] = (A[IDX(i - 1, j, k, L)] + A[IDX(i, j - 1, k, L)] + A[IDX(i, j, k - 1, L)] +
+                          A[IDX(i, j, k + 1, L)] + A[IDX(i, j + 1, k, L)] + A[IDX(i + 1, j, k, L)]) /
+                         6.0;
 }
+
+struct DiffFunctor
+{
+    const double *A;
+    const double *B;
+
+    __host__ __device__ double operator()(int i) const
+    {
+        return fabs(B[i] - A[i]);
+    }
+};
 
 int main(int an, char **as)
 {
@@ -95,12 +90,15 @@ int main(int an, char **as)
 
     for (int it = 1; it <= ITMAX; it++)
     {
-        copyDiffKernel<<<gridSize, blockSize>>>(d_A, d_B, d_diff, L);
 
-        thrust::device_ptr<double> d_ptr(d_diff);
-        thrust::device_ptr<double> max_ptr = thrust::max_element(d_ptr, d_ptr + L * L * L);
-        cudaMemcpy(&eps, thrust::raw_pointer_cast(max_ptr), sizeof(double), cudaMemcpyDeviceToHost);
-
+        DiffFunctor dif{d_A, d_B};
+        eps = thrust::transform_reduce(
+            thrust::counting_iterator<int>(0),
+            thrust::counting_iterator<int>(L*L*L),
+            dif,
+            0.0,
+            thrust::maximum<double>());
+        std::swap(d_A, d_B);
         updateKernel<<<gridSize, blockSize>>>(d_A, d_B, L);
 
         std::cout << " IT = " << std::setw(4) << it << "   EPS = " << std::scientific << std::setprecision(7) << eps << '\n';
@@ -119,7 +117,7 @@ int main(int an, char **as)
     std::cout << " Operation type  =     floating point" << '\n';
     std::cout << " END OF Jacobi3D Benchmark" << std::endl;
 
-    auto A = new double[L*L*L];
+    auto A = new double[L * L * L];
     cudaMemcpy(A, d_A, size, cudaMemcpyDeviceToHost);
 
     auto filename = std::string(as[0]) + "_out";
