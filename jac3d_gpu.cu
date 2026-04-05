@@ -71,15 +71,14 @@ int main(int an, char **as)
     {
         ITMAX = std::stoi(as[2]);
     }
-
     size_t size = L * L * L * sizeof(double);
-    double *d_A, *d_B, *d_diff;
+    double *d_A, *d_B;
 
     cudaMalloc(&d_A, size);
     cudaMalloc(&d_B, size);
 
-    dim3 blockSize(8, 8, 8);
-    dim3 gridSize((L + 7) / 8, (L + 7) / 8, (L + 7) / 8);
+    dim3 blockSize(2, 4, 32);
+    dim3 gridSize((L + 1) / 2, (L + 3) / 4, (L + 31) / 32);
 
     initKernel<<<gridSize, blockSize>>>(d_A, d_B, L);
 
@@ -93,7 +92,7 @@ int main(int an, char **as)
         DiffFunctor dif{d_A, d_B};
         eps = thrust::transform_reduce(
             thrust::counting_iterator<int>(0),
-            thrust::counting_iterator<int>(L*L*L),
+            thrust::counting_iterator<int>(L * L * L),
             dif,
             0.0,
             thrust::maximum<double>());

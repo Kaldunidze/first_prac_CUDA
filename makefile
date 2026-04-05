@@ -3,7 +3,7 @@ GXX = g++
 
 ARCH = -arch=sm_60
 
-NVCC_FLAGS = $(ARCH) -std=c++11 -O3 -Xcompiler=-Wall,-Wextra,-Wshadow,-Werror
+NVCC_FLAGS = $(ARCH) -std=c++11 -O3
 GXX_FLAGS = -std=c++11 -O3 -Wall -Wextra -Wpedantic -Wshadow -Werror
 
 all: jac3d_cpu jac3d_gpu compare
