@@ -15,9 +15,9 @@ __host__ __device__ inline int IDX(int i, int j, int k, int L)
 
 __global__ void initKernel(double *A, double *B, int L)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
-    int k = blockIdx.z * blockDim.z + threadIdx.z;
+    int i = blockIdx.z * blockDim.z + threadIdx.z;
 
     if (i >= L || j >= L || k >= L)
         return;
@@ -32,9 +32,9 @@ __global__ void initKernel(double *A, double *B, int L)
 
 __global__ void updateKernel(double *A, double *B, int L)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
-    int k = blockIdx.z * blockDim.z + threadIdx.z;
+    int i = blockIdx.z * blockDim.z + threadIdx.z;
 
     if (i <= 0 || j <= 0 || k <= 0 || i >= L - 1 || j >= L - 1 || k >= L - 1)
         return;
@@ -77,8 +77,8 @@ int main(int an, char **as)
     cudaMalloc(&d_A, size);
     cudaMalloc(&d_B, size);
 
-    dim3 blockSize(2, 4, 32);
-    dim3 gridSize((L + 1) / 2, (L + 3) / 4, (L + 31) / 32);
+    dim3 blockSize(32, 4, 4);
+    dim3 gridSize((L + 31) / 32, (L + 3) / 4, (L + 3) / 4);
 
     initKernel<<<gridSize, blockSize>>>(d_A, d_B, L);
 
